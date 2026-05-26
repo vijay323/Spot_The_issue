@@ -1,0 +1,164 @@
+{% extends "core/base.html" %}
+{% block title %}Dashboard — SpotTheIssue{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+{% block mnav_dashboard %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  .page-wrap { max-width: 1280px; margin: 0 auto; padding: 48px 24px; }
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-box { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; text-align: center; }
+  .stat-num { font-size: 28px; font-weight: 800; }
+  .stat-label { font-size: 12px; color: var(--muted-foreground); margin-top: 4px; }
+  .filters { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+  .filter-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .filter-btn { border: 1px solid var(--border); border-radius: 100px; padding: 4px 12px; font-size: 12px; font-weight: 500; background: none; color: var(--muted-foreground); cursor: pointer; transition: all 0.2s; }
+  .filter-btn.active { border-color: var(--primary); background: rgba(99,102,241,0.1); color: var(--primary); }
+  .filter-btn:hover { border-color: rgba(99,102,241,0.4); color: var(--foreground); }
+  .results-count { font-size: 12px; color: var(--muted-foreground); margin-bottom: 16px; }
+  .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .issue-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: all 0.2s; }
+  .issue-card:hover { border-color: rgba(99,102,241,0.4); box-shadow: 0 4px 20px rgba(99,102,241,0.05); transform: translateY(-2px); }
+  .card-img { height: 160px; width: 100%; object-fit: cover; background: var(--secondary); display: block; position: relative; }
+  .card-img-wrap { position: relative; }
+  .card-img-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent); }
+  .card-img-badge { position: absolute; bottom: 8px; left: 8px; }
+  .card-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+  .card-header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .card-cat-icon { width: 28px; height: 28px; border-radius: 8px; background: rgba(99,102,241,0.1); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .card-cat { font-size: 13px; font-weight: 600; }
+  .card-id { font-size: 11px; color: var(--muted-foreground); }
+  .card-desc { font-size: 12px; color: var(--muted-foreground); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card-meta { display: flex; align-items: center; gap: 12px; }
+  .card-meta-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted-foreground); }
+  .empty-state { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 80px 20px; text-align: center; }
+  .cat-icons { 'Pothole':'🕳️','Garbage':'🗑️','Broken Streetlight':'💡','Waterlogging':'💧','Damaged Road':'🚧','Other':'❓' }
+  @media(max-width:900px){ .cards-grid{grid-template-columns:repeat(2,1fr)} .stats-grid{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:600px){ .cards-grid{grid-template-columns:1fr} }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <p style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:var(--primary);margin-bottom:4px">My Reports</p>
+      <h1 style="font-size:28px;font-weight:800">Dashboard</h1>
+      <p style="color:var(--muted-foreground);margin-top:4px">Track all your reported civic issues.</p>
+    </div>
+    <a href="/report/" class="btn-primary" style="padding:10px 18px;font-size:14px">+ New Report</a>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-box"><p class="stat-num">{{ stats.total }}</p><p class="stat-label">Total Reports</p></div>
+    <div class="stat-box"><p class="stat-num" style="color:#F59E0B">{{ stats.pending }}</p><p class="stat-label">Pending</p></div>
+    <div class="stat-box"><p class="stat-num" style="color:#818CF8">{{ stats.sent }}</p><p class="stat-label">Sent to Authority</p></div>
+    <div class="stat-box"><p class="stat-num" style="color:#22C55E">{{ stats.resolved }}</p><p class="stat-label">Resolved</p></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <div style="display:flex;align-items:center;gap:8px;color:var(--muted-foreground);font-size:13px">
+      🔽 Filter by:
+    </div>
+    <div class="filter-group" id="catFilters">
+      <button class="filter-btn active" onclick="setFilter('cat','All',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('cat','Pothole',this)">Pothole</button>
+      <button class="filter-btn" onclick="setFilter('cat','Garbage',this)">Garbage</button>
+      <button class="filter-btn" onclick="setFilter('cat','Broken Streetlight',this)">Broken Streetlight</button>
+      <button class="filter-btn" onclick="setFilter('cat','Waterlogging',this)">Waterlogging</button>
+      <button class="filter-btn" onclick="setFilter('cat','Damaged Road',this)">Damaged Road</button>
+    </div>
+    <div class="filter-group" id="priFilters" style="margin-left:auto">
+      <button class="filter-btn active" onclick="setFilter('pri','All',this)">All Priority</button>
+      <button class="filter-btn" onclick="setFilter('pri','High',this)"><span class="badge-priority-high">High</span></button>
+      <button class="filter-btn" onclick="setFilter('pri','Medium',this)"><span class="badge-priority-medium">Medium</span></button>
+      <button class="filter-btn" onclick="setFilter('pri','Low',this)"><span class="badge-priority-low">Low</span></button>
+    </div>
+  </div>
+
+  <p class="results-count" id="resultsCount"></p>
+
+  <div class="cards-grid" id="cardsGrid"></div>
+  <div class="empty-state" id="emptyState" style="display:none">
+    <p style="color:var(--muted-foreground);font-size:14px">No issues match the selected filters.</p>
+    <button onclick="clearFilters()" style="margin-top:12px;font-size:13px;color:var(--primary);background:none;border:none;cursor:pointer;text-decoration:underline">Clear filters</button>
+  </div>
+</div>
+
+<script>
+const ALL_ISSUES = {{ issues_json|safe }};
+const CAT_ICONS = {'Pothole':'🕳️','Garbage':'🗑️','Broken Streetlight':'💡','Waterlogging':'💧','Damaged Road':'🚧','Other':'❓'};
+let activeCat = 'All', activePri = 'All';
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'});
+}
+
+function renderCards() {
+  const filtered = ALL_ISSUES.filter(i => {
+    return (activeCat==='All'||i.category===activeCat) && (activePri==='All'||i.priority===activePri);
+  });
+  const grid = document.getElementById('cardsGrid');
+  const empty = document.getElementById('emptyState');
+  document.getElementById('resultsCount').textContent = `Showing ${filtered.length} of ${ALL_ISSUES.length} issues`;
+
+  if (filtered.length === 0) { grid.style.display='none'; empty.style.display='block'; return; }
+  grid.style.display='grid'; empty.style.display='none';
+
+  grid.innerHTML = filtered.map(issue => {
+    const icon = CAT_ICONS[issue.category] || '❓';
+    const imgSrc = issue.image || '/static/core/images/placeholder.jpg';
+    return `
+    <div class="issue-card">
+      <div class="card-img-wrap">
+        <img class="card-img" src="${imgSrc}" alt="${issue.category}" onerror="this.src='/static/core/images/placeholder.jpg'">
+        <div class="card-img-overlay"></div>
+        <div class="card-img-badge">${getPriorityBadge(issue.priority)}</div>
+      </div>
+      <div class="card-body">
+        <div class="card-header-row">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="card-cat-icon">${icon}</div>
+            <div>
+              <p class="card-cat">${issue.category}</p>
+              <p class="card-id">${issue.id}</p>
+            </div>
+          </div>
+          ${getStatusBadge(issue.status)}
+        </div>
+        <p class="card-desc">${issue.description}</p>
+        <div class="card-meta">
+          <span class="card-meta-item">📍 ${issue.location}</span>
+          <span class="card-meta-item" style="margin-left:auto">📅 ${formatDate(issue.reportedAt)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setFilter(type, val, btn) {
+  if (type==='cat') {
+    activeCat = val;
+    document.querySelectorAll('#catFilters .filter-btn').forEach(b=>b.classList.remove('active'));
+  } else {
+    activePri = val;
+    document.querySelectorAll('#priFilters .filter-btn').forEach(b=>b.classList.remove('active'));
+  }
+  btn.classList.add('active');
+  renderCards();
+}
+function clearFilters() {
+  activeCat='All'; activePri='All';
+  document.querySelectorAll('#catFilters .filter-btn')[0].classList.add('active');
+  document.querySelectorAll('#catFilters .filter-btn').forEach((b,i)=>{ if(i>0) b.classList.remove('active'); });
+  document.querySelectorAll('#priFilters .filter-btn')[0].classList.add('active');
+  document.querySelectorAll('#priFilters .filter-btn').forEach((b,i)=>{ if(i>0) b.classList.remove('active'); });
+  renderCards();
+}
+renderCards();
+</script>
+{% endblock %}

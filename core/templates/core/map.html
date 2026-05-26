@@ -1,0 +1,548 @@
+{% extends "core/base.html" %}
+{% block title %}Issue Map — SpotTheIssue{% endblock %}
+{% block nav_map %}active{% endblock %}
+{% block mnav_map %}active{% endblock %}
+
+{% block extra_css %}
+
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+/>
+
+<style>
+
+.page-wrap{
+  max-width:1400px;
+  margin:0 auto;
+  padding:40px 24px;
+}
+
+/* HEADER */
+
+.map-top{
+  margin-bottom:24px;
+}
+
+.map-label{
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:0.15em;
+  color:var(--primary);
+  margin-bottom:4px;
+}
+
+.map-title{
+  font-size:32px;
+  font-weight:800;
+}
+
+.map-desc{
+  color:var(--muted-foreground);
+  margin-top:6px;
+}
+
+/* FILTERS */
+
+.filters{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  align-items:center;
+  margin-bottom:24px;
+}
+
+.filter-btn{
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.02);
+  color:var(--muted-foreground);
+  border-radius:999px;
+  padding:8px 16px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+  transition:0.25s;
+}
+
+.filter-btn:hover{
+  border-color:rgba(99,102,241,0.4);
+  color:white;
+}
+
+.filter-btn.active{
+  background:rgba(99,102,241,0.15);
+  border-color:#6366F1;
+  color:#818CF8;
+}
+
+/* MAP CARD */
+
+.map-card{
+  background:linear-gradient(
+    135deg,
+    rgba(15,23,42,0.95),
+    rgba(17,24,39,0.92)
+  );
+
+  border:1px solid var(--border);
+  border-radius:24px;
+  overflow:hidden;
+  position:relative;
+}
+
+/* MAP */
+
+#realMap{
+  width:100%;
+  height:750px;
+  z-index:1;
+}
+
+/* STATS */
+
+.map-stats{
+  position:absolute;
+  top:18px;
+  left:18px;
+  z-index:1000;
+
+  background:rgba(15,23,42,0.88);
+  backdrop-filter:blur(14px);
+
+  border:1px solid rgba(255,255,255,0.08);
+
+  border-radius:16px;
+
+  padding:14px 18px;
+}
+
+.map-stats-title{
+  font-size:11px;
+  color:#94A3B8;
+  margin-bottom:6px;
+}
+
+.map-stats-value{
+  font-size:28px;
+  font-weight:800;
+  color:white;
+}
+
+/* LEGEND */
+
+.map-legend{
+  position:absolute;
+  bottom:18px;
+  left:18px;
+  z-index:1000;
+
+  display:flex;
+  gap:14px;
+
+  background:rgba(15,23,42,0.88);
+  backdrop-filter:blur(14px);
+
+  border:1px solid rgba(255,255,255,0.08);
+
+  border-radius:14px;
+
+  padding:12px 14px;
+}
+
+.legend-item{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:#CBD5E1;
+}
+
+.legend-dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+}
+
+/* LEAFLET */
+
+.leaflet-control-zoom a{
+  background:#0F172A !important;
+  color:white !important;
+  border:none !important;
+}
+
+.leaflet-control-zoom a:hover{
+  background:#1E293B !important;
+}
+
+.leaflet-popup-content-wrapper{
+  background:#0F172A;
+  color:white;
+  border-radius:16px;
+}
+
+.leaflet-popup-tip{
+  /* ================= PULSING MARKERS ================= */
+
+.pulse-marker{
+  position:relative;
+}
+
+.pulse-marker::before{
+
+  content:'';
+
+  position:absolute;
+
+  width:100%;
+  height:100%;
+
+  border-radius:50%;
+
+  background:inherit;
+
+  animation:pulse-animation 1.8s infinite;
+
+  z-index:-1;
+}
+
+@keyframes pulse-animation{
+
+  0%{
+    transform:scale(1);
+    opacity:0.7;
+  }
+
+  70%{
+    transform:scale(2.6);
+    opacity:0;
+  }
+
+  100%{
+    transform:scale(1);
+    opacity:0;
+  }
+
+}
+ 
+}
+
+@media(max-width:768px){
+
+  #realMap{
+    height:600px;
+  }
+
+  .map-title{
+    font-size:26px;
+  }
+
+}
+
+</style>
+
+{% endblock %}
+
+{% block content %}
+
+<div class="page-wrap">
+
+  <!-- HEADER -->
+
+  <div class="map-top">
+
+    <p class="map-label">
+      LIVE TRACKING
+    </p>
+
+    <h1 class="map-title">
+      Issue Map View
+    </h1>
+
+    <p class="map-desc">
+      Real-time civic issues reported by citizens across the city
+    </p>
+
+  </div>
+
+  <!-- FILTERS -->
+
+  <div class="filters">
+
+    <button class="filter-btn active"
+            onclick="filterMarkers('All', this)">
+      All
+    </button>
+
+    <button class="filter-btn"
+            onclick="filterMarkers('Pothole', this)">
+      Pothole
+    </button>
+
+    <button class="filter-btn"
+            onclick="filterMarkers('Garbage', this)">
+      Garbage
+    </button>
+
+    <button class="filter-btn"
+            onclick="filterMarkers('Broken Streetlight', this)">
+      Streetlight
+    </button>
+
+    <button class="filter-btn"
+            onclick="filterMarkers('Waterlogging', this)">
+      Waterlogging
+    </button>
+
+    <button class="filter-btn"
+            onclick="filterMarkers('Damaged Road', this)">
+      Damaged Road
+    </button>
+
+  </div>
+
+  <!-- MAP -->
+
+  <div class="map-card">
+
+    <!-- STATS -->
+
+    <div class="map-stats">
+
+      <div class="map-stats-title">
+        Total Active Issues
+      </div>
+
+      <div class="map-stats-value"
+           id="issueCount">
+        0
+      </div>
+
+    </div>
+
+    <!-- LEGEND -->
+
+    <div class="map-legend">
+
+      <div class="legend-item">
+        <span class="legend-dot"
+              style="background:#EF4444"></span>
+        High
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot"
+              style="background:#F59E0B"></span>
+        Medium
+      </div>
+
+      <div class="legend-item">
+        <span class="legend-dot"
+              style="background:#22C55E"></span>
+        Low
+      </div>
+
+    </div>
+
+    <!-- REAL MAP -->
+
+    <div id="realMap"></div>
+
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+
+const MAP_ISSUES = {{ map_issues_json|safe }};
+
+let map;
+
+let markers = [];
+
+const priorityColors = {
+  High:'#EF4444',
+  Medium:'#F59E0B',
+  Low:'#22C55E'
+};
+
+/* INITIALIZE MAP */
+
+function initializeMap(){
+
+ map = L.map('realMap').setView(
+  [23.8388, 78.7378],
+  13
+);
+
+  setTimeout(() => {
+    map.invalidateSize();
+  }, 500);
+
+  L.tileLayer(
+    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    {
+      attribution:'© OpenStreetMap'
+    }
+  ).addTo(map);
+
+  renderMarkers('All');
+
+}
+
+/* RENDER MARKERS */
+
+function renderMarkers(filterType){
+
+  // remove old markers
+  markers.forEach(marker => {
+    map.removeLayer(marker);
+  });
+
+  markers = [];
+
+  let count = 0;
+
+  MAP_ISSUES.forEach(issue => {
+
+    if(filterType !== 'All' &&
+       issue.type !== filterType){
+      return;
+    }
+
+    if(!issue.lat || !issue.lng){
+      return;
+    }
+
+    count++;
+
+    const color =
+      priorityColors[issue.priority] || '#6366F1';
+
+    const pulseIcon = L.divIcon({
+
+  className:'',
+
+  html:`
+
+    <div class="pulse-marker"
+         style="
+            width:18px;
+            height:18px;
+            border-radius:50%;
+            background:${color};
+            border:3px solid white;
+            box-shadow:0 0 20px ${color};
+         ">
+    </div>
+
+  `,
+
+  iconSize:[18,18],
+  iconAnchor:[9,9]
+
+});
+
+const marker = L.marker(
+
+  [issue.lat, issue.lng],
+
+  {
+    icon:pulseIcon
+  }
+
+).addTo(map);
+
+    marker.bindPopup(`
+
+      <div style="min-width:240px">
+
+        <h3 style="
+          margin:0 0 10px;
+          font-size:16px;
+          font-weight:700;
+        ">
+          ${issue.type}
+        </h3>
+
+        <p style="
+          margin:0 0 8px;
+          font-size:12px;
+        ">
+          📍 ${issue.location}
+        </p>
+
+        <p style="
+          margin:0 0 10px;
+          font-size:12px;
+          color:#CBD5E1;
+          line-height:1.5;
+        ">
+          ${issue.description}
+        </p>
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+        ">
+
+          <span style="
+            color:${color};
+            font-weight:700;
+            font-size:12px;
+          ">
+            ⚠ ${issue.priority}
+          </span>
+
+          <span style="
+            font-size:11px;
+            color:#94A3B8;
+          ">
+            ${issue.status}
+          </span>
+
+        </div>
+
+      </div>
+
+    `);
+
+    markers.push(marker);
+
+  });
+
+  document.getElementById('issueCount')
+          .textContent = count;
+
+}
+
+/* FILTER */
+
+function filterMarkers(type, btn){
+
+  document.querySelectorAll('.filter-btn')
+    .forEach(b => {
+      b.classList.remove('active');
+    });
+
+  btn.classList.add('active');
+
+  renderMarkers(type);
+
+}
+
+/* START */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  initializeMap();
+
+});
+
+</script>
+
+{% endblock %}

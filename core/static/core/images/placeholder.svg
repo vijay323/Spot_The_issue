@@ -1,0 +1,5 @@
+<svg width="400" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1C1C27"/>
+  <text x="200" y="95" text-anchor="middle" fill="#6B6B80" font-family="Inter,sans-serif" font-size="14">No Image</text>
+  <text x="200" y="115" text-anchor="middle" fill="#6B6B80" font-family="Inter,sans-serif" font-size="28">🖼️</text>
+</svg>

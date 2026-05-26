@@ -1,0 +1,330 @@
+{% extends "core/base.html" %}
+{% block title %}Admin Dashboard — SpotTheIssue{% endblock %}
+{% block nav_admin %}active{% endblock %}
+{% block mnav_admin %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+  .page-wrap { max-width: 1280px; margin: 0 auto; padding: 40px 24px; }
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .header-actions { display: flex; gap: 8px; }
+  .btn-sm {
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border); background: var(--secondary);
+    border-radius: 10px; padding: 8px 14px; font-size: 12px;
+    font-weight: 600; color: var(--muted-foreground); cursor: pointer; transition: all 0.2s;
+  }
+  .btn-sm:hover { color: var(--foreground); border-color: rgba(99,102,241,0.4); }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; transition: transform 0.2s; }
+  .stat-card:hover { transform: translateY(-4px); }
+  .stat-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 12px; }
+  .stat-num { font-size: 26px; font-weight: 800; }
+  .stat-label { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .tab-btn { padding: 10px 16px; font-size: 14px; font-weight: 600; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; color: var(--muted-foreground); transition: all 0.2s; }
+  .tab-btn.active { border-bottom-color: var(--primary); color: var(--primary); }
+  .tab-btn:hover { color: var(--foreground); }
+  /* Filters */
+  .filter-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .filter-chip { border: 1px solid var(--border); border-radius: 100px; padding: 4px 14px; font-size: 12px; font-weight: 500; background: none; color: var(--muted-foreground); cursor: pointer; transition: all 0.2s; }
+  .filter-chip.active { border-color: var(--primary); background: rgba(99,102,241,0.1); color: var(--primary); }
+  /* Table */
+  .issues-table { width: 100%; }
+  .table-row {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px; margin-bottom: 12px; display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
+    gap: 16px; align-items: center; transition: border-color 0.2s;
+  }
+  .table-row:hover { border-color: rgba(99,102,241,0.3); }
+  .table-header { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted-foreground); padding: 0 0 12px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px; gap: 16px; }
+  .row-cat { display: flex; align-items: center; gap: 10px; }
+  .row-cat-icon { width: 32px; height: 32px; border-radius: 8px; background: rgba(99,102,241,0.1); display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .row-cat-name { font-size: 13px; font-weight: 600; }
+  .row-cat-id { font-size: 10px; font-family: monospace; color: var(--muted-foreground); }
+  .row-loc { font-size: 12px; color: var(--muted-foreground); }
+  .row-conf { font-size: 12px; font-weight: 600; }
+  .ai-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+  .status-select {
+    background: var(--secondary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 10px; font-size: 12px;
+    color: var(--foreground); cursor: pointer; outline: none;
+    width: 100%; transition: border-color 0.2s;
+  }
+  .status-select:focus { border-color: var(--primary); }
+  /* Analytics */
+  .analytics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .analytics-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .bar-chart { display: flex; flex-direction: column; gap: 12px; }
+  .bar-item { display: flex; align-items: center; gap: 12px; }
+  .bar-label { font-size: 12px; color: var(--muted-foreground); width: 100px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 10px; background: var(--secondary); border-radius: 5px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 5px; transition: width 1s ease; }
+  .bar-val { font-size: 12px; font-weight: 700; width: 30px; text-align: right; }
+  .donut-wrap { display: flex; align-items: center; gap: 24px; }
+  .donut { width: 120px; height: 120px; border-radius: 50%; position: relative; flex-shrink: 0; }
+  .donut-legend { display: flex; flex-direction: column; gap: 10px; }
+  .donut-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .donut-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  @media(max-width:1024px) { .table-row,.table-header { grid-template-columns: 2fr 1fr 1fr auto; } .row-conf,.row-loc { display: none; } }
+  @media(max-width:768px) { .stats-grid { grid-template-columns: repeat(2,1fr); } .analytics-grid { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-wrap">
+  <!-- Header -->
+  <div class="page-header">
+    <div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <span style="color:var(--primary)">🛡️</span>
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:var(--primary)">Authority Portal</span>
+      </div>
+      <h1 style="font-size:28px;font-weight:800">Admin Dashboard</h1>
+      <p style="color:var(--muted-foreground);margin-top:4px">Manage civic complaints, update statuses, and review AI insights</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-sm" onclick="showToast('Refreshing data...','','info')">🔄 Refresh</button>
+      <button class="btn-sm" onclick="showToast('Report exported!','CSV downloaded')">⬇️ Export</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(99,102,241,0.1);color:var(--primary)">📊</div>
+      <p class="stat-num">{{ stats.total }}</p>
+      <p class="stat-label">Total Complaints</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(239,68,68,0.1);color:#EF4444">⚠️</div>
+      <p class="stat-num" style="color:#EF4444">{{ stats.high_priority }}</p>
+      <p class="stat-label">High Priority</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(245,158,11,0.1);color:#F59E0B">⏳</div>
+      <p class="stat-num" style="color:#F59E0B">{{ stats.pending }}</p>
+      <p class="stat-label">Pending Review</p>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:rgba(34,197,94,0.1);color:#22C55E">✅</div>
+      <p class="stat-num" style="color:#22C55E">{{ stats.resolved }}</p>
+      <p class="stat-label">Resolved</p>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tabComplaints" onclick="switchTab('complaints')">📋 All Complaints</button>
+    <button class="tab-btn" id="tabAnalytics" onclick="switchTab('analytics')">📊 Data Analytics</button>
+  </div>
+
+  <!-- Complaints Tab -->
+  <div id="panelComplaints">
+    <div class="filter-row">
+      <span style="font-size:13px;color:var(--muted-foreground);display:flex;align-items:center;gap:6px">🔽 Filter:</span>
+      <div id="statusChips" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="filter-chip active" onclick="setAdminFilter('status','All',this)">All Status</button>
+        <button class="filter-chip" onclick="setAdminFilter('status','Pending',this)">Pending</button>
+        <button class="filter-chip" onclick="setAdminFilter('status','Sent to Authority',this)">Sent to Authority</button>
+        <button class="filter-chip" onclick="setAdminFilter('status','Resolved',this)">Resolved</button>
+      </div>
+      <div id="priorityChips" style="display:flex;gap:8px;flex-wrap:wrap;margin-left:16px">
+        <button class="filter-chip active" onclick="setAdminFilter('priority','All',this)">All Priority</button>
+        <button class="filter-chip" onclick="setAdminFilter('priority','High',this)"><span class="badge-priority-high">High</span></button>
+        <button class="filter-chip" onclick="setAdminFilter('priority','Medium',this)"><span class="badge-priority-medium">Medium</span></button>
+        <button class="filter-chip" onclick="setAdminFilter('priority','Low',this)"><span class="badge-priority-low">Low</span></button>
+      </div>
+    </div>
+
+    <div class="table-header">
+      <span>Issue / Category</span><span>Priority</span><span>Location</span><span>Confidence</span><span>AI Urgency</span><span>Status</span>
+    </div>
+    <div id="issuesTable"></div>
+  </div>
+
+  <!-- Analytics Tab -->
+  <div id="panelAnalytics" style="display:none">
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:20px">Issues by Category</h3>
+        <div class="bar-chart" id="categoryChart"></div>
+      </div>
+      <div class="analytics-card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:20px">Status Distribution</h3>
+        <div class="donut-wrap" id="statusChart"></div>
+      </div>
+      <div class="analytics-card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:20px">Priority Breakdown</h3>
+        <div class="bar-chart" id="priorityChart"></div>
+      </div>
+      <div class="analytics-card">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">AI Performance</h3>
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--muted-foreground)">Overall Accuracy</span><span style="font-weight:700;color:#22C55E">94%</span></div>
+            <div style="height:8px;background:var(--secondary);border-radius:4px;overflow:hidden"><div style="width:94%;height:100%;background:linear-gradient(90deg,#22C55E,#22D3EE);border-radius:4px"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--muted-foreground)">Avg. Confidence Score</span><span style="font-weight:700;color:#6366F1">91%</span></div>
+            <div style="height:8px;background:var(--secondary);border-radius:4px;overflow:hidden"><div style="width:91%;height:100%;background:linear-gradient(90deg,#6366F1,#8B5CF6);border-radius:4px"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="color:var(--muted-foreground)">Issues Auto-Routed</span><span style="font-weight:700;color:#F59E0B">87%</span></div>
+            <div style="height:8px;background:var(--secondary);border-radius:4px;overflow:hidden"><div style="width:87%;height:100%;background:linear-gradient(90deg,#F59E0B,#F97316);border-radius:4px"></div></div>
+          </div>
+          <div style="margin-top:8px;padding:12px;background:rgba(99,102,241,0.05);border-radius:10px;border:1px solid rgba(99,102,241,0.15)">
+            <p style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:4px">⚡ AI Model Status</p>
+            <p style="font-size:11px;color:var(--muted-foreground)">CivicSense YOLOv8 v12 • <span style="color:#22C55E">● Online</span> • Last updated: Mar 2025</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const ALL_ISSUES = {{ issues_json|safe }};
+const CAT_ICONS = {'Pothole':'🕳️','Garbage':'🗑️','Broken Streetlight':'💡','Waterlogging':'💧','Damaged Road':'🚧','Other':'❓'};
+let adminStatusFilter = 'All', adminPriFilter = 'All';
+let issueData = ALL_ISSUES.map(i => ({...i}));
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tabComplaints').classList.toggle('active', tab==='complaints');
+  document.getElementById('tabAnalytics').classList.toggle('active', tab==='analytics');
+  document.getElementById('panelComplaints').style.display = tab==='complaints'?'block':'none';
+  document.getElementById('panelAnalytics').style.display = tab==='analytics'?'block':'none';
+  if (tab==='analytics') renderAnalytics();
+}
+
+function setAdminFilter(type, val, btn) {
+  if (type==='status') {
+    adminStatusFilter = val;
+    document.querySelectorAll('#statusChips .filter-chip').forEach(b=>b.classList.remove('active'));
+  } else {
+    adminPriFilter = val;
+    document.querySelectorAll('#priorityChips .filter-chip').forEach(b=>b.classList.remove('active'));
+  }
+  btn.classList.add('active');
+  renderTable();
+}
+
+function getAIUrgency(priority) {
+  if (priority==='High') return '<span class="ai-badge" style="background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2)">⚡ Immediate</span>';
+  if (priority==='Medium') return '<span class="ai-badge" style="background:rgba(245,158,11,0.1);color:#F59E0B;border:1px solid rgba(245,158,11,0.2)">🕐 48hrs</span>';
+  return '<span class="ai-badge" style="background:rgba(34,197,94,0.1);color:#22C55E;border:1px solid rgba(34,197,94,0.2)">✓ Low</span>';
+}
+
+function renderTable() {
+  const filtered = issueData.filter(i =>
+    (adminStatusFilter==='All'||i.status===adminStatusFilter) &&
+    (adminPriFilter==='All'||i.priority===adminPriFilter)
+  );
+  const table = document.getElementById('issuesTable');
+  if (filtered.length===0) {
+    table.innerHTML = '<div style="text-align:center;padding:60px;color:var(--muted-foreground);font-size:14px">No issues match filters.</div>';
+    return;
+  }
+  table.innerHTML = filtered.map(issue => `
+    <div class="table-row">
+      <div class="row-cat">
+        <div class="row-cat-icon">${CAT_ICONS[issue.category]||'❓'}</div>
+        <div>
+          <p class="row-cat-name">${issue.category}</p>
+          <p class="row-cat-id">${issue.id}</p>
+        </div>
+      </div>
+      <div>${getPriorityBadge(issue.priority)}</div>
+      <div class="row-loc">📍 ${issue.location}</div>
+      <div class="row-conf" style="color:${issue.confidence>=90?'#22C55E':issue.confidence>=70?'#F59E0B':'#EF4444'}">${issue.confidence}%</div>
+      <div>${getAIUrgency(issue.priority)}</div>
+      <div>
+        <select class="status-select" onchange="updateStatus('${issue.id}', this.value)">
+          <option value="Pending" ${issue.status==='Pending'?'selected':''}>Pending</option>
+          <option value="Sent to Authority" ${issue.status==='Sent to Authority'?'selected':''}>Sent to Authority</option>
+          <option value="Resolved" ${issue.status==='Resolved'?'selected':''}>Resolved</option>
+        </select>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function updateStatus(id, newStatus) {
+  // Update local data
+  const idx = issueData.findIndex(i => i.id===id);
+  if (idx>=0) issueData[idx].status = newStatus;
+  showToast(`Status updated to "${newStatus}"`);
+  // Try API update (for DB issues)
+  try {
+    await fetch(`/api/issues/${id}/status/`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','X-CSRFToken':getCookie('csrftoken')},
+      body: JSON.stringify({status: newStatus})
+    });
+  } catch {}
+}
+
+const CATEGORY_DATA = [
+  {name:'Pothole', count:34, color:'#6366F1'},
+  {name:'Garbage', count:22, color:'#22D3EE'},
+  {name:'Streetlight', count:18, color:'#F59E0B'},
+  {name:'Waterlogging', count:15, color:'#EF4444'},
+  {name:'Road Damage', count:11, color:'#22C55E'},
+];
+const maxCat = Math.max(...CATEGORY_DATA.map(d=>d.count));
+
+function renderAnalytics() {
+  // Bar chart — categories
+  document.getElementById('categoryChart').innerHTML = CATEGORY_DATA.map(d => `
+    <div class="bar-item">
+      <span class="bar-label">${d.name}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(d.count/maxCat*100).toFixed(1)}%;background:${d.color}"></div></div>
+      <span class="bar-val" style="color:${d.color}">${d.count}</span>
+    </div>
+  `).join('');
+
+  // Donut — status
+  const total = issueData.length || 1;
+  const pending = issueData.filter(i=>i.status==='Pending').length;
+  const sent = issueData.filter(i=>i.status==='Sent to Authority').length;
+  const resolved = issueData.filter(i=>i.status==='Resolved').length;
+  const statusData = [
+    {label:'Pending', count:pending, color:'#F59E0B'},
+    {label:'Sent to Auth', count:sent, color:'#6366F1'},
+    {label:'Resolved', count:resolved, color:'#22C55E'},
+  ];
+  // Simple visual donut using conic-gradient
+  const pPct = (pending/total*100).toFixed(1);
+  const sPct = (sent/total*100).toFixed(1);
+  const rPct = (resolved/total*100).toFixed(1);
+  document.getElementById('statusChart').innerHTML = `
+    <div class="donut" style="background:conic-gradient(#F59E0B 0% ${pPct}%, #6366F1 ${pPct}% ${(pending+sent)/total*100}%, #22C55E ${(pending+sent)/total*100}% 100%)">
+      <div style="position:absolute;inset:20px;border-radius:50%;background:var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--muted-foreground)">${total}<br>issues</div>
+    </div>
+    <div class="donut-legend">
+      ${statusData.map(s=>`<div class="donut-item"><span class="donut-dot" style="background:${s.color}"></span><span style="color:var(--muted-foreground)">${s.label}</span><span style="margin-left:auto;font-weight:700">${s.count}</span></div>`).join('')}
+    </div>
+  `;
+
+  // Bar — priority
+  const priData = [
+    {name:'High', count:issueData.filter(i=>i.priority==='High').length, color:'#EF4444'},
+    {name:'Medium', count:issueData.filter(i=>i.priority==='Medium').length, color:'#F59E0B'},
+    {name:'Low', count:issueData.filter(i=>i.priority==='Low').length, color:'#22C55E'},
+  ];
+  const maxPri = Math.max(...priData.map(d=>d.count), 1);
+  document.getElementById('priorityChart').innerHTML = priData.map(d => `
+    <div class="bar-item">
+      <span class="bar-label">${d.name} Priority</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${(d.count/maxPri*100).toFixed(1)}%;background:${d.color}"></div></div>
+      <span class="bar-val" style="color:${d.color}">${d.count}</span>
+    </div>
+  `).join('');
+}
+
+renderTable();
+</script>
+{% endblock %}

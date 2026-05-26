@@ -1,0 +1,83 @@
+{% extends "core/base.html" %}
+
+{% block content %}
+
+<div style="
+  min-height:80vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+">
+
+  <form method="POST"
+        style="
+          width:400px;
+          background:#111827;
+          padding:40px;
+          border-radius:20px;
+          border:1px solid #374151;
+        ">
+
+    {% csrf_token %}
+
+    <h1 style="
+      font-size:32px;
+      font-weight:800;
+      margin-bottom:24px;
+    ">
+      Admin Login
+    </h1>
+
+    <input
+      type="text"
+      name="username"
+      placeholder="Username"
+
+      style="
+        width:100%;
+        padding:14px;
+        margin-bottom:16px;
+        border-radius:12px;
+        border:none;
+        background:#1F2937;
+        color:white;
+      "
+    >
+
+    <input
+      type="password"
+      name="password"
+      placeholder="Password"
+
+      style="
+        width:100%;
+        padding:14px;
+        margin-bottom:20px;
+        border-radius:12px;
+        border:none;
+        background:#1F2937;
+        color:white;
+      "
+    >
+
+    <button
+      type="submit"
+
+      style="
+        width:100%;
+        padding:14px;
+        border:none;
+        border-radius:12px;
+        background:#6366F1;
+        color:white;
+        font-weight:700;
+      "
+    >
+      Login
+    </button>
+
+  </form>
+
+</div>
+
+{% endblock %}
