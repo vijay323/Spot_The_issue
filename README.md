@@ -1,86 +1,72 @@
-# CivicSense AI — Django
+# CivicSense AI — Django + Real YOLOv8
 
-Full conversion of the CivicSense AI platform from Next.js/React to Django + Python. All features preserved, same UI/UX.
-
-## Features
-- 🏠 Landing page with hero, features, testimonials, CTA
-- 📸 Report Issue page with drag-and-drop upload + AI analysis simulation
-- 📊 Dashboard with filter by category & priority
-- 🗺️ Interactive map view with pin filtering
-- 🛡️ Admin panel with status management + analytics charts
-- 💬 AI chat assistant (floating widget, all pages)
-- 🌙 Dark theme matching original design exactly
-
-## Quick Start
+## Setup (3 steps)
 
 ```bash
-# 1. Create & activate virtual environment
-python -m venv venv
-source venv/bin/activate      # Windows: venv\Scripts\activate
+# 1. Activate your existing venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # Mac/Linux
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Install AI dependencies (if not already)
+pip install ultralytics torch torchvision opencv-python-headless
 
-# 3. Run migrations
+# 3. Run migrations + start server
 python manage.py migrate
-
-# 4. Create superuser (optional, for /admin/)
-python manage.py createsuperuser
-
-# 5. Run development server
 python manage.py runserver
 ```
 
 Open http://localhost:8000
 
-## Pages
+---
 
-| URL | Description |
-|-----|-------------|
-| `/` | Landing page |
-| `/report/` | Report a civic issue (upload + AI) |
-| `/dashboard/` | View & filter all reports |
-| `/map/` | Interactive map with issue pins |
-| `/admin-panel/` | Admin complaints + analytics |
-| `/admin/` | Django built-in admin |
+## Model File ✅
 
-## API Endpoints
+Your `best.pt` is already in place at:
+```
+ai_models/best.pt   (65MB — real trained weights)
+```
 
+**Detectable classes:**
+| Class | Display Name |
+|-------|-------------|
+| 0 | Garbage |
+| 1 | Pothole |
+| 2 | Waterlogging |
+| 3 | Broken Streetlight |
+
+---
+
+## New Features Added
+
+### Report Page
+- **Real YOLOv8 detection** — uploads photo, runs `best.pt`, returns class + bbox
+- **Bounding box drawn on preview** — green box shows what was detected
+- **`🤖 YOLOv8 Real` / `🔮 Smart Mock` badge** — tells you which mode ran
+- **Manual override** — 11 issue type buttons (AI detects 4, you can pick any)
+- **AI status pill** — top of page shows model status + detectable classes
+- **GPS coordinates** — capture exact lat/lng for map placement
+- **Submit only when**: image + location + type all filled
+
+### Issue Types (11 total)
+AI-detectable (4): Pothole, Garbage, Waterlogging, Broken Streetlight
+Manual (7): Damaged Road, Encroachment, Sewage Overflow, Stray Animals,
+            Illegal Dumping, Noise Pollution, Other
+
+### API Endpoints
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/analyze/` | POST | Simulated AI image analysis |
-| `/api/chat/` | POST | AI chat assistant response |
-| `/api/issues/<id>/status/` | POST | Update issue status |
+| `/api/analyze/` | POST | Real YOLOv8 inference |
+| `/api/chat/` | POST | AI chatbot |
+| `/api/issues/<id>/status/` | POST | Update status |
+| `/api/issues/<id>/delete/` | POST | Delete issue (admin) |
+| `/api/ai-status/` | GET | Model load status + classes |
 
-## Project Structure
+---
 
-```
-civicsense_django/
-├── civicsense/          # Django project settings
-│   ├── settings.py
-│   ├── urls.py
-│   └── wsgi.py
-├── core/                # Main app
-│   ├── models.py        # Issue model
-│   ├── views.py         # All views + API endpoints
-│   ├── urls.py          # URL routing
-│   ├── admin.py         # Django admin config
-│   ├── migrations/      # DB migrations
-│   └── templates/core/  # HTML templates
-│       ├── base.html    # Shared layout, navbar, footer, chat widget
-│       ├── home.html    # Landing page
-│       ├── report.html  # Issue reporting
-│       ├── dashboard.html
-│       ├── map.html
-│       └── admin.html
-├── media/               # Uploaded images
-├── manage.py
-└── requirements.txt
+## If YOLOv8 isn't installed yet
+
+```bash
+pip install ultralytics
 ```
 
-## Notes
-
-- Uses **SQLite** by default (zero config). Switch to PostgreSQL in `settings.py` for production.
-- AI analysis is **simulated** (random category/priority/confidence). To use real YOLOv8, integrate the `ai/` module from the original project into `core/views.py → ai_analyze()`.
-- Images uploaded via the report form are saved to `media/issues/`.
-- The `SECRET_KEY` in settings.py must be changed for production deployment.
+The app works without it (smart mock mode) — same UI, deterministic fake results.
